@@ -9,13 +9,12 @@ const port = process.env.PORT || 5000
 app.use(cors())
 app.use(express.json())
 
-//touristGuideUser
-//vvn0HndNj1mxkwRF
-console.log(process.env.DB_USER);
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+
+
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.wua58o9.mongodb.net/?retryWrites=true&w=majority`;
-console.log(uri);
+
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -29,13 +28,38 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+   // await client.connect();
     const packageCollection = client.db('touristGuide').collection('packages')
+    const wishListCollection = client.db('touristGuide').collection('wishList')
 
     app.get('/packages',async(req,res)=>{
         const result = await packageCollection.find().toArray()
             res.send(result)
     })
+
+    app.get('/packages/:id', async(req,res)=>{
+        const id = req.params.id
+        const query = {_id : new ObjectId(id)}
+        const options = {
+           // Include only the `title` and `imdb` fields in the returned document
+            projection: { day1_description: 1,day1_tourPlan : 1, day2_description: 1,day2_tourPlan:1,image:1,price:1,title:1,tour_type:1,tour_id:1},
+          };
+        const result = await packageCollection.findOne(query,options)
+        res.send(result)
+    })
+
+    //wishListCollection
+    app.get('/wishList', async(req,res)=>{
+        const email = req.query.email
+        const query = {email: email}
+        const result = await wishListCollection.find(query).toArray()
+        res.send(result)
+    })
+    app.post('/wishList' ,async(req,res)=>{
+        const wishListItem = req.body
+        const result = await wishListCollection.insertOne(wishListItem)
+        res.send(result)
+    } )
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
