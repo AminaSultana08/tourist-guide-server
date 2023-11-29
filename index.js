@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express()
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 require('dotenv').config()
 const port = process.env.PORT || 5000
 
@@ -31,7 +32,35 @@ async function run() {
    // await client.connect();
     const packageCollection = client.db('touristGuide').collection('packages')
     const wishListCollection = client.db('touristGuide').collection('wishList')
+    const userCollection = client.db('touristGuide').collection('users')
 
+    //jwt api
+    app.post('/jwt', async(req,res)=>{
+      const user = req.body
+      const token = jwt.sign(user , process.env.ACCESS_TOKEN_SECRET,{expiresIn:'1h'} )
+      res.send({token})
+    })
+
+    //verify token//middleware
+    const verifyToken= (req,res,next)=>{
+      console.log('inside verify token', req.headers.authorization);
+      if(!req.headers.authorization){
+        return res.status(401).send({message:'forbidden access'})
+      }
+      const token = req.headers.authorization.split(' ')[1]
+      jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(err,decoded)=>{
+        if(err){
+          return res.status(401).send({message:'forbidden access'})
+        }
+        req.decoded= decoded
+        next()
+      })
+      
+
+    }
+
+
+    //packages api
     app.get('/packages',async(req,res)=>{
         const result = await packageCollection.find().toArray()
             res.send(result)
@@ -48,7 +77,7 @@ async function run() {
         res.send(result)
     })
 
-    //wishListCollection
+    //wishListCollection api
     app.get('/wishList', async(req,res)=>{
         const email = req.query.email
         const query = {email: email}
@@ -65,6 +94,60 @@ async function run() {
         const id= req.params.id
         const query = {_id : new ObjectId(id)}
         const result = await wishListCollection.deleteOne(query)
+        res.send(result)
+    })
+
+    //user Api
+    app.get('/users',verifyToken, async(req,res)=>{
+     
+        const result = await userCollection.find().toArray()
+        res.send(result)
+
+    })
+
+    app.post('/users',async(req,res)=>{
+        const user = req.body
+        const query = {email : user.email}
+        const existingUser = await userCollection.findOne(query)
+        if(existingUser){
+            return res.send({message:'user is already existed', insertedId:null})
+        }
+        const result = await userCollection.insertOne(user)
+        res.send(result)
+
+    })
+// admin role
+    app.patch('/users/admin/:id', async(req,res)=>{
+      const id = req.params.id
+      const filter = {_id: new ObjectId(id)}
+      const updatedDoc = {
+        $set: {
+          role: 'admin'
+        }
+      }
+      const result = await userCollection.updateOne(filter,updatedDoc)
+      res.send(result)
+
+    })
+
+    //tourGuide role
+    app.patch('/users/tourGuide/:id', async(req,res)=>{
+      const id = req.params.id
+      const filter = {_id: new ObjectId(id)}
+      const updatedDoc ={
+        $set: {
+          role:'tourGuide'
+        }
+      }
+      const result = await userCollection.updateOne(filter,updatedDoc)
+      res.send(result)
+    })
+
+    //delete user
+    app.delete('/users/:id', async(req,res)=>{
+        const id = req.params.id
+        const query= {_id: new ObjectId(id)}
+        const result = await userCollection.deleteOne(query)
         res.send(result)
     })
     // Send a ping to confirm a successful connection
