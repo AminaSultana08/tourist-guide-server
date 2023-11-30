@@ -116,7 +116,7 @@ async function run() {
     })
 
     //user Api
-    app.get('/users',verifyToken, async(req,res)=>{
+    app.get('/users', async(req,res)=>{
      
         const result = await userCollection.find().toArray()
         res.send(result)
@@ -169,7 +169,7 @@ async function run() {
     })
 
     //tourGuide role
-    app.patch('/users/tourGuide/:id',verifyToken, verifyAdmin, async(req,res)=>{
+    app.patch('/users/tourGuide/:id',verifyToken,  async(req,res)=>{
       const id = req.params.id
       const filter = {_id: new ObjectId(id)}
       const updatedDoc ={
@@ -181,7 +181,7 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/users/tourGuide/:email',verifyToken,verifyAdmin, async(req,res)=>{
+    app.get('/users/tourGuide/:email',verifyToken, async(req,res)=>{
       const email = req.params.email
       if(email !== req.decoded.email){
         return res.status(403).send({message:'forbidden access'})
